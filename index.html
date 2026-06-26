@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SD Prompt Builder</title>
+<title>SD プロンプトビルダー</title>
 <style>
   :root {
     --bg: #0f0f13;
@@ -339,11 +339,11 @@
 <body>
 
 <header>
-  <h1>SD Prompt Builder <span>for Stable Diffusion</span></h1>
+  <h1>SD プロンプトビルダー <span>Stable Diffusion 用</span></h1>
   <div class="header-tabs">
-    <button class="tab-btn active" onclick="switchTab('positive')">Positive</button>
-    <button class="tab-btn" onclick="switchTab('negative')">Negative</button>
-    <button class="tab-btn" onclick="switchTab('both')">Both</button>
+    <button class="tab-btn active" onclick="switchTab('positive')">ポジティブ</button>
+    <button class="tab-btn" onclick="switchTab('negative')">ネガティブ</button>
+    <button class="tab-btn" onclick="switchTab('both')">両方</button>
   </div>
 </header>
 
@@ -354,7 +354,7 @@
   <!-- Center: Tags -->
   <div class="tag-panel">
     <div class="search-bar">
-      <input type="text" id="searchInput" placeholder="タグを検索... (例: lighting, anime)" oninput="filterTags(this.value)">
+      <input type="text" id="searchInput" placeholder="タグを検索... (例: lighting, anime, 1girl)" oninput="filterTags(this.value)">
     </div>
     <div class="tag-area" id="tagArea"></div>
   </div>
@@ -362,37 +362,37 @@
   <!-- Right: Prompt builder -->
   <div class="right-panel">
     <div class="preset-bar">
-      <span class="preset-label">Preset</span>
-      <button class="preset-btn" onclick="applyPreset('portrait')">Portrait</button>
-      <button class="preset-btn" onclick="applyPreset('landscape')">Landscape</button>
-      <button class="preset-btn" onclick="applyPreset('anime')">Anime</button>
-      <button class="preset-btn" onclick="applyPreset('photo')">Photo</button>
-      <button class="preset-btn" onclick="clearAll()">✕ Clear</button>
+      <span class="preset-label">プリセット</span>
+      <button class="preset-btn" onclick="applyPreset('portrait')">ポートレート</button>
+      <button class="preset-btn" onclick="applyPreset('landscape')">風景</button>
+      <button class="preset-btn" onclick="applyPreset('anime')">アニメ</button>
+      <button class="preset-btn" onclick="applyPreset('photo')">写真</button>
+      <button class="preset-btn" onclick="clearAll()">✕ 全消去</button>
     </div>
 
     <!-- Positive prompt -->
     <div class="prompt-section" id="posSection">
       <div class="prompt-header">
-        <span class="prompt-header-label">Positive</span>
-        <span class="prompt-count" id="posCount">0 tags</span>
-        <button class="clear-btn" onclick="clearPrompt('pos')">Clear</button>
+        <span class="prompt-header-label">ポジティブ</span>
+        <span class="prompt-count" id="posCount">0 個</span>
+        <button class="clear-btn" onclick="clearPrompt('pos')">クリア</button>
       </div>
       <div class="prompt-tags" id="posTags">
         <div class="empty-hint">カテゴリからタグをクリックして追加</div>
       </div>
       <div class="custom-input-row">
-        <input type="text" id="customPos" placeholder="カスタムタグを入力..." onkeydown="if(event.key==='Enter')addCustomTag('pos')">
-        <button class="add-btn" onclick="addCustomTag('pos')">+ Pos</button>
-        <button class="add-btn add-neg-btn" onclick="addCustomTag('neg')">+ Neg</button>
+        <input type="text" id="customPos" placeholder="カスタムタグを入力（カンマ区切りで複数可）" onkeydown="if(event.key==='Enter')addCustomTag('pos')">
+        <button class="add-btn" onclick="addCustomTag('pos')">+ ポジ</button>
+        <button class="add-btn add-neg-btn" onclick="addCustomTag('neg')">+ ネガ</button>
       </div>
     </div>
 
     <!-- Negative prompt -->
     <div class="prompt-section" id="negSection">
       <div class="prompt-header">
-        <span class="prompt-header-label neg">Negative</span>
-        <span class="prompt-count" id="negCount">0 tags</span>
-        <button class="clear-btn" onclick="clearPrompt('neg')">Clear</button>
+        <span class="prompt-header-label neg">ネガティブ</span>
+        <span class="prompt-count" id="negCount">0 個</span>
+        <button class="clear-btn" onclick="clearPrompt('neg')">クリア</button>
       </div>
       <div class="prompt-tags" id="negTags">
         <div class="empty-hint">ネガティブタグをクリックして追加</div>
@@ -404,12 +404,12 @@
       <div class="output-row">
         <span class="output-label">POS</span>
         <div class="output-box" id="posOutput">—</div>
-        <button class="copy-btn" id="copyPosBtn" onclick="copyPrompt('pos')">Copy</button>
+        <button class="copy-btn" id="copyPosBtn" onclick="copyPrompt('pos')">コピー</button>
       </div>
       <div class="output-row">
         <span class="output-label">NEG</span>
         <div class="output-box" id="negOutput">—</div>
-        <button class="copy-btn neg" id="copyNegBtn" onclick="copyPrompt('neg')">Copy</button>
+        <button class="copy-btn neg" id="copyNegBtn" onclick="copyPrompt('neg')">コピー</button>
       </div>
     </div>
   </div>
@@ -417,7 +417,7 @@
 
 <!-- Weight popup -->
 <div class="weight-popup" id="weightPopup">
-  <label id="weightLabel">Weight: <strong id="weightTagName">tag</strong></label>
+  <label id="weightLabel">強度: <strong id="weightTagName">tag</strong></label>
   <input type="range" id="weightSlider" min="0.5" max="2.0" step="0.05" value="1.0" oninput="onWeightChange(this.value)">
   <span class="weight-val" id="weightVal">1.0</span>
   <div class="weight-presets">
@@ -434,7 +434,7 @@
 // ─── Data ───────────────────────────────────────────────────────────────────
 const CATEGORIES = [
   {
-    id: 'quality', name: 'Quality', icon: '⭐',
+    id: 'quality', name: '品質', icon: '⭐',
     tags: [
       'masterpiece', 'best quality', 'high quality', 'ultra detailed',
       'ultra-high resolution', '8k', '4k uhd', 'highres', 'absurdres',
@@ -443,7 +443,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'style', name: 'Style', icon: '🎨',
+    id: 'style', name: 'スタイル', icon: '🎨',
     tags: [
       'anime', 'manga', 'illustration', 'digital art', 'concept art',
       'photorealistic', 'hyperrealistic', 'oil painting', 'watercolor',
@@ -453,7 +453,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'subject', name: 'Subject', icon: '👤',
+    id: 'subject', name: '被写体', icon: '👤',
     tags: [
       '1girl', '1boy', 'solo', 'duo', 'group',
       'beautiful woman', 'handsome man', 'young woman', 'young man',
@@ -462,7 +462,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'hair', name: 'Hair', icon: '💇',
+    id: 'hair', name: '髪型', icon: '💇',
     tags: [
       'long hair', 'short hair', 'medium hair', 'twin tails', 'ponytail',
       'braided hair', 'curly hair', 'straight hair', 'wavy hair',
@@ -471,7 +471,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'eyes', name: 'Eyes', icon: '👁️',
+    id: 'eyes', name: '目・瞳', icon: '👁️',
     tags: [
       'blue eyes', 'green eyes', 'brown eyes', 'red eyes', 'golden eyes',
       'purple eyes', 'heterochromia', 'glowing eyes', 'sharp eyes',
@@ -479,7 +479,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'expression', name: 'Expression', icon: '😊',
+    id: 'expression', name: '表情', icon: '😊',
     tags: [
       'smile', 'grin', 'laughing', 'serious expression', 'calm expression',
       'sad expression', 'angry', 'surprised', 'shy', 'confident',
@@ -487,7 +487,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'clothing', name: 'Clothing', icon: '👗',
+    id: 'clothing', name: '服装', icon: '👗',
     tags: [
       'school uniform', 'casual clothes', 'formal wear', 'suit',
       'dress', 'kimono', 'yukata', 'armor', 'maid outfit',
@@ -496,7 +496,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'lighting', name: 'Lighting', icon: '💡',
+    id: 'lighting', name: '照明', icon: '💡',
     tags: [
       'soft lighting', 'dramatic lighting', 'natural lighting',
       'studio lighting', 'cinematic lighting', 'rim lighting',
@@ -506,7 +506,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'composition', name: 'Composition', icon: '📐',
+    id: 'composition', name: '構図', icon: '📐',
     tags: [
       'portrait', 'close-up', 'extreme close-up', 'half body',
       'upper body', 'full body', 'face focus',
@@ -516,7 +516,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'background', name: 'Background', icon: '🌄',
+    id: 'background', name: '背景', icon: '🌄',
     tags: [
       'simple background', 'white background', 'gradient background',
       'blurred background', 'outdoor', 'indoor', 'forest', 'ocean',
@@ -526,7 +526,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'colors', name: 'Colors', icon: '🎨',
+    id: 'colors', name: '色調', icon: '🎨',
     tags: [
       'vibrant colors', 'pastel colors', 'muted colors', 'monochrome',
       'warm colors', 'cool colors', 'dark theme', 'bright and colorful',
@@ -535,7 +535,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'atmosphere', name: 'Atmosphere', icon: '✨',
+    id: 'atmosphere', name: '雰囲気', icon: '✨',
     tags: [
       'epic', 'cinematic', 'dramatic', 'peaceful', 'mysterious',
       'melancholic', 'romantic', 'dark atmosphere', 'ethereal',
@@ -543,7 +543,7 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'negative', name: 'Negative', icon: '🚫',
+    id: 'negative', name: 'ネガティブ用', icon: '🚫',
     tags: [
       'blurry', 'out of focus', 'bad quality', 'worst quality',
       'low quality', 'low resolution', 'pixelated', 'jpeg artifacts',
@@ -687,7 +687,7 @@ function renderPromptChips(type) {
   const countEl = document.getElementById(type + 'Count');
 
   container.innerHTML = '';
-  countEl.textContent = map.size + ' tag' + (map.size !== 1 ? 's' : '');
+  countEl.textContent = map.size + ' 個';
 
   if (map.size === 0) {
     container.innerHTML = type === 'pos'
@@ -786,10 +786,10 @@ function copyPrompt(type) {
   if (!str) return;
   navigator.clipboard.writeText(str).then(() => {
     const btn = document.getElementById('copy' + (type === 'pos' ? 'Pos' : 'Neg') + 'Btn');
-    btn.textContent = 'Copied!';
+    btn.textContent = 'コピー完了!';
     btn.classList.add('copied');
     setTimeout(() => {
-      btn.textContent = 'Copy';
+      btn.textContent = 'コピー';
       btn.classList.remove('copied');
     }, 1500);
   });
