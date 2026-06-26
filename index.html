@@ -431,6 +431,111 @@
 </div>
 
 <script>
+// ─── Japanese display labels (keys = English prompt values) ──────────────────
+const TAG_LABELS = {
+  // 品質
+  'masterpiece':'傑作', 'best quality':'最高品質', 'high quality':'高品質',
+  'ultra detailed':'超詳細', 'ultra-high resolution':'超高解像度',
+  '8k':'8K', '4k uhd':'4K UHD', 'highres':'高解像度', 'absurdres':'極高解像度',
+  'extremely detailed':'非常に詳細', 'intricate details':'精緻なディテール',
+  'sharp focus':'シャープ', 'professionally shot':'プロ撮影風',
+  'RAW photo':'RAW写真', 'film grain':'フィルムグレイン',
+  // スタイル
+  'anime':'アニメ', 'manga':'漫画', 'illustration':'イラスト',
+  'digital art':'デジタルアート', 'concept art':'コンセプトアート',
+  'photorealistic':'フォトリアル', 'hyperrealistic':'超リアル',
+  'oil painting':'油絵', 'watercolor':'水彩画', 'pencil sketch':'鉛筆スケッチ',
+  'ink drawing':'墨絵', 'pixel art':'ドット絵', 'cel shading':'セルシェーディング',
+  'fantasy art':'ファンタジーアート', 'cyberpunk':'サイバーパンク',
+  'steampunk':'スチームパンク', 'vaporwave':'ヴェイパーウェーブ',
+  'studio ghibli':'スタジオジブリ風', 'makoto shinkai style':'新海誠風',
+  // 被写体
+  '1girl':'女の子1人', '1boy':'男の子1人', 'solo':'ソロ', 'duo':'2人', 'group':'グループ',
+  'beautiful woman':'美しい女性', 'handsome man':'ハンサムな男性',
+  'young woman':'若い女性', 'young man':'若い男性',
+  'child':'子供', 'elderly':'老人', 'warrior':'戦士', 'mage':'魔法使い',
+  'knight':'騎士', 'elf':'エルフ', 'dragon':'ドラゴン', 'cat':'猫',
+  'wolf':'狼', 'robot':'ロボット', 'android':'アンドロイド',
+  // 髪型
+  'long hair':'ロングヘア', 'short hair':'ショートヘア', 'medium hair':'ミディアムヘア',
+  'twin tails':'ツインテール', 'ponytail':'ポニーテール', 'braided hair':'編み込み',
+  'curly hair':'カーリーヘア', 'straight hair':'ストレートヘア', 'wavy hair':'ウェーブヘア',
+  'black hair':'黒髪', 'blonde hair':'ブロンド', 'brown hair':'茶髪',
+  'white hair':'白髪', 'silver hair':'シルバー', 'pink hair':'ピンク髪',
+  'blue hair':'青髪', 'gradient hair':'グラデーション',
+  // 目・瞳
+  'blue eyes':'青い瞳', 'green eyes':'緑の瞳', 'brown eyes':'茶色の瞳',
+  'red eyes':'赤い瞳', 'golden eyes':'金の瞳', 'purple eyes':'紫の瞳',
+  'heterochromia':'オッドアイ', 'glowing eyes':'発光する瞳', 'sharp eyes':'鋭い目',
+  'large eyes':'大きな目', 'detailed eyes':'詳細な瞳', 'beautiful eyes':'美しい瞳',
+  // 表情
+  'smile':'笑顔', 'grin':'ニヤリ', 'laughing':'笑い',
+  'serious expression':'真剣な表情', 'calm expression':'穏やかな表情',
+  'sad expression':'悲しい表情', 'angry':'怒り', 'surprised':'驚き',
+  'shy':'恥ずかしがり', 'confident':'自信満々',
+  'looking at viewer':'こちらを見ている', 'looking away':'よそ見',
+  'looking up':'上を向く', 'looking down':'下を向く',
+  // 服装
+  'school uniform':'制服', 'casual clothes':'カジュアル', 'formal wear':'フォーマル',
+  'suit':'スーツ', 'dress':'ドレス', 'kimono':'着物', 'yukata':'浴衣',
+  'armor':'鎧', 'maid outfit':'メイド服', 'hoodie':'パーカー',
+  'jacket':'ジャケット', 'coat':'コート', 'white shirt':'白シャツ',
+  'crop top':'クロップトップ', 'bikini':'ビキニ', 'swimsuit':'水着',
+  'sportswear':'スポーツウェア', 'fantasy armor':'ファンタジー鎧',
+  // 照明
+  'soft lighting':'ソフトライト', 'dramatic lighting':'ドラマチックライト',
+  'natural lighting':'自然光', 'studio lighting':'スタジオ照明',
+  'cinematic lighting':'シネマ照明', 'rim lighting':'リムライト',
+  'backlighting':'逆光', 'golden hour':'ゴールデンアワー', 'blue hour':'ブルーアワー',
+  'neon lighting':'ネオン照明', 'volumetric light':'ボリューメトリック光',
+  'god rays':'光芒', 'bokeh':'ボケ', 'lens flare':'レンズフレア',
+  'subsurface scattering':'表面下散乱',
+  // 構図
+  'portrait':'ポートレート', 'close-up':'クローズアップ',
+  'extreme close-up':'超クローズアップ', 'half body':'半身',
+  'upper body':'上半身', 'full body':'全身', 'face focus':'顔フォーカス',
+  'wide shot':'ワイドショット', 'establishing shot':'全景ショット',
+  'overhead view':'俯瞰', 'low angle':'ローアングル',
+  'dynamic angle':'ダイナミックアングル', 'dutch angle':'ダッチアングル',
+  'rule of thirds':'三分割法', 'symmetrical':'シンメトリー',
+  // 背景
+  'simple background':'シンプル背景', 'white background':'白背景',
+  'gradient background':'グラデーション背景', 'blurred background':'ぼかし背景',
+  'outdoor':'屋外', 'indoor':'室内', 'forest':'森', 'ocean':'海',
+  'cityscape':'都市風景', 'night sky':'夜空', 'starry sky':'星空',
+  'cherry blossoms':'桜', 'fantasy landscape':'ファンタジー風景',
+  'ruins':'廃墟', 'castle':'城', 'coffee shop':'カフェ', 'futuristic city':'未来都市',
+  // 色調
+  'vibrant colors':'鮮やかな色彩', 'pastel colors':'パステルカラー',
+  'muted colors':'くすんだ色', 'monochrome':'モノクロ',
+  'warm colors':'暖色', 'cool colors':'寒色', 'dark theme':'ダークトーン',
+  'bright and colorful':'明るくカラフル', 'high contrast':'ハイコントラスト',
+  'low contrast':'ローコントラスト', 'saturated':'彩度高め', 'desaturated':'彩度低め',
+  'golden tones':'ゴールドトーン', 'cyan and purple':'シアン＆パープル',
+  // 雰囲気
+  'epic':'壮大', 'cinematic':'シネマ風', 'dramatic':'ドラマチック',
+  'peaceful':'穏やか', 'mysterious':'神秘的', 'melancholic':'憂鬱',
+  'romantic':'ロマンチック', 'dark atmosphere':'暗い雰囲気',
+  'ethereal':'幻想的', 'dreamlike':'夢のような', 'magical':'魔法的',
+  'action-packed':'アクション満載', 'serene':'静寂',
+  // ネガティブ用
+  'blurry':'ぼやけ', 'out of focus':'ピンぼけ', 'bad quality':'低品質',
+  'worst quality':'最低品質', 'low quality':'品質低下', 'low resolution':'低解像度',
+  'pixelated':'ピクセル化', 'jpeg artifacts':'JPEGノイズ',
+  'noise':'ノイズ', 'grainy':'粒状', 'watermark':'透かし',
+  'signature':'署名', 'text':'テキスト', 'logo':'ロゴ',
+  'bad anatomy':'解剖エラー', 'deformed':'変形', 'disfigured':'奇形',
+  'mutated':'突然変異', 'extra limbs':'余分な手足', 'missing limbs':'手足の欠如',
+  'extra fingers':'余分な指', 'missing fingers':'指の欠如',
+  'floating limbs':'浮いた手足', 'disconnected limbs':'切断された手足',
+  'malformed hands':'変形した手', 'bad hands':'崩れた手', 'ugly':'醜い',
+  'overexposed':'露出過多', 'underexposed':'露出不足',
+  'cropped':'切れている', 'out of frame':'フレームアウト',
+  'error':'エラー', 'duplicate':'重複', 'cloned face':'クローン顔',
+  'gross proportions':'変なプロポーション', 'long neck':'長い首',
+  'bad proportions':'悪いプロポーション',
+};
+
 // ─── Data ───────────────────────────────────────────────────────────────────
 const CATEGORIES = [
   {
@@ -642,7 +747,9 @@ function renderTags(catId, filter = '') {
       const el = document.createElement('span');
       el.className = 'tag' + (isPos ? ' selected' : '') + (isNeg ? ' selected-neg' : '');
       const weight = isPos ? selectedPos.get(tag) : (isNeg ? selectedNeg.get(tag) : 1.0);
-      el.innerHTML = tag + (weight !== 1.0 ? `<span class="tag-weight">:${weight}</span>` : '');
+      const label = TAG_LABELS[tag] || tag;
+      el.innerHTML = label + (weight !== 1.0 ? `<span class="tag-weight">:${weight}</span>` : '');
+      el.title = tag;
       el.onclick = (e) => handleTagClick(e, tag, cat.id);
       tagsDiv.appendChild(el);
     });
@@ -704,7 +811,8 @@ function renderPromptChips(type) {
 
     const wLabel = weight !== 1.0 ? `<span class="chip-weight" title="クリックで重みを変更" onclick="openWeightPopup(event,'${type}','${tag.replace(/'/g,"\\'")}',this)">${weight.toFixed(2)}</span>` : `<span class="chip-weight" title="クリックで重みを設定" onclick="openWeightPopup(event,'${type}','${tag.replace(/'/g,"\\'")}',this)">⚖</span>`;
 
-    chip.innerHTML = `<span>${tag}</span>${wLabel}<span class="chip-remove" onclick="removeChip('${type}','${tag.replace(/'/g,"\\'")}')">×</span>`;
+    const displayLabel = TAG_LABELS[tag] || tag;
+    chip.innerHTML = `<span title="${tag}">${displayLabel}</span>${wLabel}<span class="chip-remove" onclick="removeChip('${type}','${tag.replace(/'/g,"\\'")}')">×</span>`;
     container.appendChild(chip);
   });
 }
