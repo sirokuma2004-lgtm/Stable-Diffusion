@@ -342,7 +342,7 @@
   .save-btn:hover { border-color: var(--yellow); color: var(--yellow); }
   .save-btn.saved { border-color: var(--green); color: var(--green); }
 
-  /* ─── マイタグ delete button inside tag chip ─── */
+  /* ─── カスタムタグの削除ボタン ─── */
   .tag .tag-del {
     font-size: 10px; color: var(--text3); margin-left: 3px; cursor: pointer;
     line-height: 1; width: 13px; height: 13px; display: inline-flex;
@@ -350,6 +350,27 @@
     flex-shrink: 0;
   }
   .tag .tag-del:hover { background: rgba(224,108,117,.3); color: var(--accent2); }
+  .tag.user-custom { border-style: dashed; }
+
+  /* ─── カテゴリ選択ポップアップ ─── */
+  .cat-picker-popup {
+    position: fixed; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px; z-index: 9999; display: none;
+    box-shadow: 0 8px 28px rgba(0,0,0,.6); width: 230px;
+  }
+  .cat-picker-popup.visible { display: block; }
+  .cat-picker-title {
+    font-size: 10px; color: var(--text3); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 8px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cat-picker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .cat-picker-btn {
+    padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface3); color: var(--text2); cursor: pointer; font-size: 11px;
+    text-align: left; transition: all .12s; display: flex; align-items: center; gap: 5px;
+  }
+  .cat-picker-btn:hover { border-color: var(--accent); color: var(--text); background: rgba(124,106,247,.12); }
 
   /* ─── Scrollbars ─── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -410,7 +431,7 @@
         </div>
         <button class="add-btn" onclick="addCustomTag('pos')">＋ポジ</button>
         <button class="add-btn add-neg-btn" onclick="addCustomTag('neg')">＋ネガ</button>
-        <button class="add-btn save-btn" id="saveBtn" onclick="saveToMyTags()" title="マイタグカテゴリに永続保存">★保存</button>
+        <button class="add-btn save-btn" id="saveBtn" onclick="openCatPicker(event)" title="既存カテゴリに永続保存">★保存</button>
       </div>
     </div>
 
@@ -440,6 +461,12 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Category picker popup -->
+<div class="cat-picker-popup" id="catPickerPopup">
+  <div class="cat-picker-title">追加するカテゴリを選択</div>
+  <div class="cat-picker-grid" id="catPickerGrid"></div>
 </div>
 
 <!-- Weight popup -->
@@ -707,24 +734,27 @@ const PRESETS = {
   },
 };
 
-// ─── MyTags (localStorage) ────────────────────────────────────────────────────
-const MY_TAGS_KEY = 'sd_my_tags';
-let myTags = []; // { en: string, ja: string }[]
+// ─── カスタムタグ (localStorage) ─────────────────────────────────────────────
+const CUSTOM_TAGS_KEY = 'sd_custom_tags_v2';
+let customTagsByCategory = {}; // { [catId]: [{en, ja}] }
 
-function loadMyTags() {
-  try { myTags = JSON.parse(localStorage.getItem(MY_TAGS_KEY) || '[]'); } catch(e) { myTags = []; }
-  myTags.forEach(({ en, ja }) => { if (ja && ja !== en) TAG_LABELS[en] = ja; });
+function loadCustomTags() {
+  try { customTagsByCategory = JSON.parse(localStorage.getItem(CUSTOM_TAGS_KEY) || '{}'); } catch(e) { customTagsByCategory = {}; }
+  Object.values(customTagsByCategory).flat().forEach(({ en, ja }) => {
+    if (ja && ja !== en) TAG_LABELS[en] = ja;
+  });
 }
 
-function persistMyTags() {
-  localStorage.setItem(MY_TAGS_KEY, JSON.stringify(myTags));
+function persistCustomTags() {
+  localStorage.setItem(CUSTOM_TAGS_KEY, JSON.stringify(customTagsByCategory));
 }
 
-function removeMyTag(en) {
-  myTags = myTags.filter(t => t.en !== en);
-  persistMyTags();
+function removeCustomTag(catId, en) {
+  if (!customTagsByCategory[catId]) return;
+  customTagsByCategory[catId] = customTagsByCategory[catId].filter(t => t.en !== en);
+  persistCustomTags();
   renderSidebar();
-  if (activeCategory === 'mytags') renderTags('mytags');
+  renderTags(activeCategory, document.getElementById('searchInput').value);
 }
 
 // ─── Translation ──────────────────────────────────────────────────────────────
@@ -780,13 +810,13 @@ async function translateText(text) {
 // ─── State ───────────────────────────────────────────────────────────────────
 let selectedPos = new Map(); // tag -> weight
 let selectedNeg = new Map();
-let activeCategory = 'mytags';
+let activeCategory = CATEGORIES[0].id;
 let currentTab = 'both';
 let weightTarget = null; // { type: 'pos'|'neg', tag }
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 function init() {
-  loadMyTags();
+  loadCustomTags();
   renderSidebar();
   renderTags(activeCategory);
   updateLayout();
@@ -796,12 +826,12 @@ function init() {
 function renderSidebar() {
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = '';
-  const myTagsCat = { id: 'mytags', name: 'マイタグ', icon: '📌', count: myTags.length };
-  [myTagsCat, ...CATEGORIES].forEach(cat => {
+  CATEGORIES.forEach(cat => {
+    const customCount = (customTagsByCategory[cat.id] || []).length;
+    const total = cat.tags.length + customCount;
     const div = document.createElement('div');
     div.className = 'cat-item' + (cat.id === activeCategory ? ' active' : '');
-    const count = cat.count !== undefined ? cat.count : cat.tags.length;
-    div.innerHTML = `<span class="cat-icon">${cat.icon}</span>${cat.name}<span class="cat-count">${count}</span>`;
+    div.innerHTML = `<span class="cat-icon">${cat.icon}</span>${cat.name}<span class="cat-count">${total}</span>`;
     div.onclick = () => selectCategory(cat.id);
     sidebar.appendChild(div);
   });
@@ -815,51 +845,39 @@ function selectCategory(id) {
 }
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────
+function makeTagEl(tag, catId, isCustom = false) {
+  const isPos = selectedPos.has(tag);
+  const isNeg = selectedNeg.has(tag);
+  const el = document.createElement('span');
+  el.className = 'tag' + (isPos ? ' selected' : '') + (isNeg ? ' selected-neg' : '') + (isCustom ? ' user-custom' : '');
+  const weight = isPos ? selectedPos.get(tag) : (isNeg ? selectedNeg.get(tag) : 1.0);
+  const label = TAG_LABELS[tag] || tag;
+  const safeTag = tag.replace(/'/g, "\\'");
+  const safeCat = catId.replace(/'/g, "\\'");
+  el.innerHTML = label + (weight !== 1.0 ? `<span class="tag-weight">:${weight}</span>` : '')
+    + (isCustom ? `<span class="tag-del" title="このカテゴリから削除" onclick="event.stopPropagation();removeCustomTag('${safeCat}','${safeTag}')">×</span>` : '');
+  el.title = tag;
+  el.onclick = (e) => handleTagClick(e, tag, catId);
+  return el;
+}
+
 function renderTags(catId, filter = '') {
   const area = document.getElementById('tagArea');
   area.innerHTML = '';
 
-  // マイタグ専用レンダリング
-  if (catId === 'mytags') {
-    if (myTags.length === 0) {
-      area.innerHTML = '<div class="empty-hint">まだ保存されたタグはありません<br>タグを入力して「★ 保存」を押してください</div>';
-      return;
-    }
-    const tagsDiv = document.createElement('div');
-    tagsDiv.className = 'tags';
-    myTags.forEach(({ en, ja }) => {
-      const isPos = selectedPos.has(en);
-      const isNeg = selectedNeg.has(en);
-      const el = document.createElement('span');
-      el.className = 'tag' + (isPos ? ' selected' : '') + (isNeg ? ' selected-neg' : '');
-      const weight = isPos ? selectedPos.get(en) : (isNeg ? selectedNeg.get(en) : 1.0);
-      const safeEn = en.replace(/'/g, "\\'");
-      el.innerHTML = (ja || en) +
-        (weight !== 1.0 ? `<span class="tag-weight">:${weight}</span>` : '') +
-        `<span class="tag-del" title="マイタグから削除" onclick="event.stopPropagation();removeMyTag('${safeEn}')">×</span>`;
-      el.title = en;
-      el.onclick = () => toggleTag('pos', en);
-      tagsDiv.appendChild(el);
-    });
-    area.appendChild(tagsDiv);
-    return;
-  }
-
   let cats;
   if (catId === '__search__') {
     const f = filter.toLowerCase();
-    const myTagResults = myTags.filter(t =>
-      t.en.toLowerCase().includes(f) || (t.ja && t.ja.includes(filter))
-    );
-    const myTagCat = myTagResults.length
-      ? [{ id: 'mytags', name: 'マイタグ', icon: '📌', tags: myTagResults.map(t => t.en), isMyTags: true }]
-      : [];
-    cats = [
-      ...myTagCat,
-      ...CATEGORIES.map(c => ({ ...c, tags: c.tags.filter(t => t.toLowerCase().includes(f) || (TAG_LABELS[t] || '').includes(filter)) })).filter(c => c.tags.length),
-    ];
+    cats = CATEGORIES.map(c => {
+      const builtIn = c.tags.filter(t => t.toLowerCase().includes(f) || (TAG_LABELS[t] || '').includes(filter));
+      const custom = (customTagsByCategory[c.id] || []).filter(t =>
+        t.en.toLowerCase().includes(f) || (t.ja || '').includes(filter)
+      );
+      return { ...c, builtIn, custom };
+    }).filter(c => c.builtIn.length + c.custom.length > 0);
   } else {
-    cats = CATEGORIES.filter(c => c.id === catId);
+    const c = CATEGORIES.find(c => c.id === catId);
+    cats = c ? [{ ...c, builtIn: c.tags, custom: customTagsByCategory[catId] || [] }] : [];
   }
 
   if (!cats.length) {
@@ -878,22 +896,8 @@ function renderTags(catId, filter = '') {
     }
     const tagsDiv = document.createElement('div');
     tagsDiv.className = 'tags';
-    cat.tags.forEach(tag => {
-      const isPos = selectedPos.has(tag);
-      const isNeg = selectedNeg.has(tag);
-      const el = document.createElement('span');
-      el.className = 'tag' + (isPos ? ' selected' : '') + (isNeg ? ' selected-neg' : '');
-      const weight = isPos ? selectedPos.get(tag) : (isNeg ? selectedNeg.get(tag) : 1.0);
-      const label = TAG_LABELS[tag] || tag;
-      const safeTag = tag.replace(/'/g, "\\'");
-      el.innerHTML = label + (weight !== 1.0 ? `<span class="tag-weight">:${weight}</span>` : '');
-      if (cat.isMyTags) {
-        el.innerHTML += `<span class="tag-del" title="マイタグから削除" onclick="event.stopPropagation();removeMyTag('${safeTag}')">×</span>`;
-      }
-      el.title = tag;
-      el.onclick = (e) => cat.isMyTags ? toggleTag('pos', tag) : handleTagClick(e, tag, cat.id);
-      tagsDiv.appendChild(el);
-    });
+    cat.builtIn.forEach(tag => tagsDiv.appendChild(makeTagEl(tag, cat.id, false)));
+    (cat.custom || []).forEach(({ en }) => tagsDiv.appendChild(makeTagEl(en, cat.id, true)));
     group.appendChild(tagsDiv);
     area.appendChild(group);
   });
@@ -1002,6 +1006,9 @@ document.addEventListener('click', (e) => {
     document.getElementById('weightPopup').classList.remove('visible');
     weightTarget = null;
   }
+  if (!e.target.closest('.cat-picker-popup') && !e.target.closest('#saveBtn')) {
+    closeCatPicker();
+  }
 });
 
 // ─── Output ───────────────────────────────────────────────────────────────────
@@ -1072,28 +1079,55 @@ function addCustomTag(type) {
   refreshAll();
 }
 
-function saveToMyTags() {
+function openCatPicker(e) {
+  e.stopPropagation();
+  const input = document.getElementById('customPos');
+  if (!input.value.trim()) return;
+  const popup = document.getElementById('catPickerPopup');
+  const grid = document.getElementById('catPickerGrid');
+  grid.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-picker-btn';
+    btn.innerHTML = `<span>${cat.icon}</span>${cat.name}`;
+    btn.onclick = (ev) => { ev.stopPropagation(); saveToCategory(cat.id); };
+    grid.appendChild(btn);
+  });
+  const rect = e.currentTarget.getBoundingClientRect();
+  popup.style.left = Math.min(rect.left, window.innerWidth - 240) + 'px';
+  popup.style.top = (rect.bottom + 6) + 'px';
+  popup.classList.add('visible');
+}
+
+function saveToCategory(catId) {
   const input = document.getElementById('customPos');
   const val = input.value.trim();
   if (!val) return;
   const en = pendingTranslation.en || val;
   const ja = pendingTranslation.ja || val;
-  if (myTags.some(t => t.en === en)) {
+  if (!customTagsByCategory[catId]) customTagsByCategory[catId] = [];
+  if (customTagsByCategory[catId].some(t => t.en === en)) {
+    closeCatPicker();
     const btn = document.getElementById('saveBtn');
     btn.textContent = '登録済み';
     setTimeout(() => { btn.textContent = '★保存'; }, 1200);
     return;
   }
-  myTags.push({ en, ja });
+  customTagsByCategory[catId].push({ en, ja });
   if (ja !== en) TAG_LABELS[en] = ja;
-  persistMyTags();
+  persistCustomTags();
+  closeCatPicker();
   clearCustomInput();
   const btn = document.getElementById('saveBtn');
   btn.textContent = '保存完了!';
   btn.classList.add('saved');
   setTimeout(() => { btn.textContent = '★保存'; btn.classList.remove('saved'); }, 1500);
   renderSidebar();
-  if (activeCategory === 'mytags') renderTags('mytags');
+  if (activeCategory === catId) renderTags(catId);
+}
+
+function closeCatPicker() {
+  document.getElementById('catPickerPopup').classList.remove('visible');
 }
 
 // ─── Presets ──────────────────────────────────────────────────────────────────
