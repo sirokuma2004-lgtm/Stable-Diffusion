@@ -330,6 +330,27 @@
   }
   .clear-btn:hover { border-color: var(--accent2); color: var(--accent2); }
 
+  /* ─── Custom input / translation ─── */
+  .custom-input-wrap { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .translate-preview {
+    font-size: 10px; color: var(--yellow); padding: 0 4px;
+    min-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .translate-preview.loading { color: var(--text3); font-style: italic; }
+  .translate-preview.error { color: var(--accent2); }
+  .save-btn { border-color: rgba(229,192,123,.4); white-space: nowrap; }
+  .save-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+  .save-btn.saved { border-color: var(--green); color: var(--green); }
+
+  /* ─── マイタグ delete button inside tag chip ─── */
+  .tag .tag-del {
+    font-size: 10px; color: var(--text3); margin-left: 3px; cursor: pointer;
+    line-height: 1; width: 13px; height: 13px; display: inline-flex;
+    align-items: center; justify-content: center; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tag .tag-del:hover { background: rgba(224,108,117,.3); color: var(--accent2); }
+
   /* ─── Scrollbars ─── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -381,9 +402,15 @@
         <div class="empty-hint">カテゴリからタグをクリックして追加</div>
       </div>
       <div class="custom-input-row">
-        <input type="text" id="customPos" placeholder="カスタムタグを入力（カンマ区切りで複数可）" onkeydown="if(event.key==='Enter')addCustomTag('pos')">
-        <button class="add-btn" onclick="addCustomTag('pos')">+ ポジ</button>
-        <button class="add-btn add-neg-btn" onclick="addCustomTag('neg')">+ ネガ</button>
+        <div class="custom-input-wrap">
+          <input type="text" id="customPos" placeholder="日本語または英語で入力..."
+                 oninput="onCustomInput(this.value)"
+                 onkeydown="if(event.key==='Enter')addCustomTag('pos')">
+          <div class="translate-preview" id="translatePreview"></div>
+        </div>
+        <button class="add-btn" onclick="addCustomTag('pos')">＋ポジ</button>
+        <button class="add-btn add-neg-btn" onclick="addCustomTag('neg')">＋ネガ</button>
+        <button class="add-btn save-btn" id="saveBtn" onclick="saveToMyTags()" title="マイタグカテゴリに永続保存">★保存</button>
       </div>
     </div>
 
@@ -680,15 +707,86 @@ const PRESETS = {
   },
 };
 
+// ─── MyTags (localStorage) ────────────────────────────────────────────────────
+const MY_TAGS_KEY = 'sd_my_tags';
+let myTags = []; // { en: string, ja: string }[]
+
+function loadMyTags() {
+  try { myTags = JSON.parse(localStorage.getItem(MY_TAGS_KEY) || '[]'); } catch(e) { myTags = []; }
+  myTags.forEach(({ en, ja }) => { if (ja && ja !== en) TAG_LABELS[en] = ja; });
+}
+
+function persistMyTags() {
+  localStorage.setItem(MY_TAGS_KEY, JSON.stringify(myTags));
+}
+
+function removeMyTag(en) {
+  myTags = myTags.filter(t => t.en !== en);
+  persistMyTags();
+  renderSidebar();
+  if (activeCategory === 'mytags') renderTags('mytags');
+}
+
+// ─── Translation ──────────────────────────────────────────────────────────────
+let translateTimer = null;
+let pendingTranslation = { en: '', ja: '' };
+
+function containsJapanese(str) {
+  return /[぀-鿿＀-￯]/.test(str);
+}
+
+function onCustomInput(val) {
+  clearTimeout(translateTimer);
+  const preview = document.getElementById('translatePreview');
+  if (!val.trim()) {
+    preview.textContent = '';
+    preview.className = 'translate-preview';
+    pendingTranslation = { en: '', ja: '' };
+    return;
+  }
+  if (containsJapanese(val)) {
+    preview.textContent = '翻訳中...';
+    preview.className = 'translate-preview loading';
+    translateTimer = setTimeout(() => translateText(val), 600);
+  } else {
+    pendingTranslation = { en: val.trim(), ja: val.trim() };
+    preview.textContent = '';
+    preview.className = 'translate-preview';
+  }
+}
+
+async function translateText(text) {
+  const preview = document.getElementById('translatePreview');
+  try {
+    const res = await fetch(
+      'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=ja|en'
+    );
+    const data = await res.json();
+    if (data.responseStatus === 200) {
+      const en = data.responseData.translatedText.toLowerCase().trim();
+      pendingTranslation = { en, ja: text };
+      preview.textContent = '→ ' + en;
+      preview.className = 'translate-preview';
+    } else {
+      throw new Error('API error');
+    }
+  } catch(e) {
+    pendingTranslation = { en: text, ja: text };
+    preview.textContent = '（翻訳失敗・英語入力を使用）';
+    preview.className = 'translate-preview error';
+  }
+}
+
 // ─── State ───────────────────────────────────────────────────────────────────
 let selectedPos = new Map(); // tag -> weight
 let selectedNeg = new Map();
-let activeCategory = CATEGORIES[0].id;
+let activeCategory = 'mytags';
 let currentTab = 'both';
 let weightTarget = null; // { type: 'pos'|'neg', tag }
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 function init() {
+  loadMyTags();
   renderSidebar();
   renderTags(activeCategory);
   updateLayout();
@@ -698,10 +796,12 @@ function init() {
 function renderSidebar() {
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = '';
-  CATEGORIES.forEach(cat => {
+  const myTagsCat = { id: 'mytags', name: 'マイタグ', icon: '📌', count: myTags.length };
+  [myTagsCat, ...CATEGORIES].forEach(cat => {
     const div = document.createElement('div');
     div.className = 'cat-item' + (cat.id === activeCategory ? ' active' : '');
-    div.innerHTML = `<span class="cat-icon">${cat.icon}</span>${cat.name}<span class="cat-count">${cat.tags.length}</span>`;
+    const count = cat.count !== undefined ? cat.count : cat.tags.length;
+    div.innerHTML = `<span class="cat-icon">${cat.icon}</span>${cat.name}<span class="cat-count">${count}</span>`;
     div.onclick = () => selectCategory(cat.id);
     sidebar.appendChild(div);
   });
@@ -719,9 +819,48 @@ function renderTags(catId, filter = '') {
   const area = document.getElementById('tagArea');
   area.innerHTML = '';
 
-  let cats = catId === '__search__'
-    ? CATEGORIES.map(c => ({ ...c, tags: c.tags.filter(t => t.toLowerCase().includes(filter.toLowerCase())) })).filter(c => c.tags.length)
-    : CATEGORIES.filter(c => c.id === catId);
+  // マイタグ専用レンダリング
+  if (catId === 'mytags') {
+    if (myTags.length === 0) {
+      area.innerHTML = '<div class="empty-hint">まだ保存されたタグはありません<br>タグを入力して「★ 保存」を押してください</div>';
+      return;
+    }
+    const tagsDiv = document.createElement('div');
+    tagsDiv.className = 'tags';
+    myTags.forEach(({ en, ja }) => {
+      const isPos = selectedPos.has(en);
+      const isNeg = selectedNeg.has(en);
+      const el = document.createElement('span');
+      el.className = 'tag' + (isPos ? ' selected' : '') + (isNeg ? ' selected-neg' : '');
+      const weight = isPos ? selectedPos.get(en) : (isNeg ? selectedNeg.get(en) : 1.0);
+      const safeEn = en.replace(/'/g, "\\'");
+      el.innerHTML = (ja || en) +
+        (weight !== 1.0 ? `<span class="tag-weight">:${weight}</span>` : '') +
+        `<span class="tag-del" title="マイタグから削除" onclick="event.stopPropagation();removeMyTag('${safeEn}')">×</span>`;
+      el.title = en;
+      el.onclick = () => toggleTag('pos', en);
+      tagsDiv.appendChild(el);
+    });
+    area.appendChild(tagsDiv);
+    return;
+  }
+
+  let cats;
+  if (catId === '__search__') {
+    const f = filter.toLowerCase();
+    const myTagResults = myTags.filter(t =>
+      t.en.toLowerCase().includes(f) || (t.ja && t.ja.includes(filter))
+    );
+    const myTagCat = myTagResults.length
+      ? [{ id: 'mytags', name: 'マイタグ', icon: '📌', tags: myTagResults.map(t => t.en), isMyTags: true }]
+      : [];
+    cats = [
+      ...myTagCat,
+      ...CATEGORIES.map(c => ({ ...c, tags: c.tags.filter(t => t.toLowerCase().includes(f) || (TAG_LABELS[t] || '').includes(filter)) })).filter(c => c.tags.length),
+    ];
+  } else {
+    cats = CATEGORIES.filter(c => c.id === catId);
+  }
 
   if (!cats.length) {
     area.innerHTML = '<div class="empty-hint">一致するタグが見つかりません</div>';
@@ -746,9 +885,13 @@ function renderTags(catId, filter = '') {
       el.className = 'tag' + (isPos ? ' selected' : '') + (isNeg ? ' selected-neg' : '');
       const weight = isPos ? selectedPos.get(tag) : (isNeg ? selectedNeg.get(tag) : 1.0);
       const label = TAG_LABELS[tag] || tag;
+      const safeTag = tag.replace(/'/g, "\\'");
       el.innerHTML = label + (weight !== 1.0 ? `<span class="tag-weight">:${weight}</span>` : '');
+      if (cat.isMyTags) {
+        el.innerHTML += `<span class="tag-del" title="マイタグから削除" onclick="event.stopPropagation();removeMyTag('${safeTag}')">×</span>`;
+      }
       el.title = tag;
-      el.onclick = (e) => handleTagClick(e, tag, cat.id);
+      el.onclick = (e) => cat.isMyTags ? toggleTag('pos', tag) : handleTagClick(e, tag, cat.id);
       tagsDiv.appendChild(el);
     });
     group.appendChild(tagsDiv);
@@ -902,16 +1045,55 @@ function copyPrompt(type) {
 }
 
 // ─── Custom tag ───────────────────────────────────────────────────────────────
+function clearCustomInput() {
+  document.getElementById('customPos').value = '';
+  document.getElementById('translatePreview').textContent = '';
+  document.getElementById('translatePreview').className = 'translate-preview';
+  pendingTranslation = { en: '', ja: '' };
+}
+
 function addCustomTag(type) {
   const input = document.getElementById('customPos');
   const val = input.value.trim();
   if (!val) return;
-  const tags = val.split(',').map(t => t.trim()).filter(Boolean);
   const map = type === 'pos' ? selectedPos : selectedNeg;
   const other = type === 'pos' ? selectedNeg : selectedPos;
-  tags.forEach(t => { other.delete(t); map.set(t, 1.0); });
-  input.value = '';
+  // カンマ区切りの場合は翻訳なしで直接追加
+  if (val.includes(',')) {
+    val.split(',').map(t => t.trim()).filter(Boolean).forEach(t => { other.delete(t); map.set(t, 1.0); });
+  } else {
+    const en = pendingTranslation.en || val;
+    const ja = pendingTranslation.ja || val;
+    if (ja !== en) TAG_LABELS[en] = ja;
+    other.delete(en);
+    map.set(en, 1.0);
+  }
+  clearCustomInput();
   refreshAll();
+}
+
+function saveToMyTags() {
+  const input = document.getElementById('customPos');
+  const val = input.value.trim();
+  if (!val) return;
+  const en = pendingTranslation.en || val;
+  const ja = pendingTranslation.ja || val;
+  if (myTags.some(t => t.en === en)) {
+    const btn = document.getElementById('saveBtn');
+    btn.textContent = '登録済み';
+    setTimeout(() => { btn.textContent = '★保存'; }, 1200);
+    return;
+  }
+  myTags.push({ en, ja });
+  if (ja !== en) TAG_LABELS[en] = ja;
+  persistMyTags();
+  clearCustomInput();
+  const btn = document.getElementById('saveBtn');
+  btn.textContent = '保存完了!';
+  btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = '★保存'; btn.classList.remove('saved'); }, 1500);
+  renderSidebar();
+  if (activeCategory === 'mytags') renderTags('mytags');
 }
 
 // ─── Presets ──────────────────────────────────────────────────────────────────
