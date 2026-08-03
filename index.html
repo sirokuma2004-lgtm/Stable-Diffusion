@@ -609,34 +609,38 @@ const TAG_LABELS = {
 // ─── Data ───────────────────────────────────────────────────────────────────
 const CATEGORIES = [
   {
-    id: 'quality', name: '品質', icon: '⭐',
+    id: 'quality', name: '品質',
     tags: [
       'masterpiece', 'best quality', 'high quality', 'ultra detailed',
       'ultra-high resolution', '8k', '4k uhd', 'highres', 'absurdres',
       'extremely detailed', 'intricate details', 'sharp focus',
-      'professionally shot', 'RAW photo', 'film grain',
+      'professionally shot',
     ]
   },
   {
-    id: 'style', name: 'スタイル', icon: '🎨',
+    id: 'style', name: 'スタイル',
     tags: [
-      'anime', 'manga', 'illustration', 'digital art', 'concept art',
+      'anime', 'manga', 'illustration', 'Kanikama Drawing Style',
       'photorealistic', 'hyperrealistic', 'oil painting', 'watercolor',
       'pencil sketch', 'ink drawing', 'pixel art', 'cel shading',
-      'fantasy art', 'cyberpunk', 'steampunk', 'vaporwave',
+      'fantasy art', 'cyberpunk', 'steampunk',
     ]
   },
   {
-    id: 'subject', name: '被写体', icon: '👤',
+    id: 'Body type', name: '体型',
     tags: [
       '1girl', '1boy', 'solo', 'duo', 'group',
-      'beautiful woman', 'handsome man', 'young woman', 'young man',
-      'child', 'elderly', 'warrior', 'mage', 'knight',
-      'elf', 'dragon', 'cat', 'wolf', 'robot', 'android',
+      'beautiful woman', 'Muscular', 'young woman', 'sensual',
     ]
   },
   {
-    id: 'hair', name: '髪型', icon: '💇',
+    id: 'Bust size', name: 'バストサイズ',
+    tags: [
+      'Small tits', 'big tits', 'huge tits', 'Natural-looking titts',
+    ]
+  },
+  {
+    id: 'hair', name: '髪型',
     tags: [
       'long hair', 'short hair', 'medium hair', 'twin tails', 'ponytail',
       'braided hair', 'curly hair', 'straight hair', 'wavy hair',
@@ -645,23 +649,33 @@ const CATEGORIES = [
     ]
   },
   {
-    id: 'eyes', name: '目・瞳', icon: '👁️',
+    id: 'expression', name: '表情',
     tags: [
-      'blue eyes', 'green eyes', 'brown eyes', 'red eyes', 'golden eyes',
-      'purple eyes', 'heterochromia', 'glowing eyes', 'sharp eyes',
-      'large eyes', 'detailed eyes', 'beautiful eyes',
-    ]
-  },
-  {
-    id: 'expression', name: '表情', icon: '😊',
-    tags: [
-      'smile', 'grin', 'laughing', 'serious expression', 'calm expression',
+      'smile', 'ahegao', 'o-face', 'Confused face', 'Expressionless',
       'sad expression', 'angry', 'surprised', 'shy', 'confident',
       'looking at viewer', 'looking away', 'looking up', 'looking down',
     ]
   },
   {
-    id: 'clothing', name: '服装', icon: '👗',
+    id: 'Arm pose', name: '腕のポーズ',
+    tags: [
+      'Cross your arms', 'Rabbit Pose', 'Double peace sign',
+    ]
+  },
+  {
+    id: 'Action', name: 'アクション',
+    tags: [
+      'stand', 'sit', 'M-shaped leg spread', 'Crouching down', 'Semi-crouching posture',
+    ]
+  },
+  {
+    id: 'Pray', name: 'プレイ',
+    tags: [
+      'Blow job', 'Blow job(Third-person perspective)', 'cowgirl', 'cowgirl(Third-person perspective)', 'Semi-crouching posture',
+    ]
+  },
+  {
+    id: 'clothing', name: '服装',
     tags: [
       'school uniform', 'casual clothes', 'formal wear', 'suit',
       'dress', 'kimono', 'yukata', 'armor', 'maid outfit',
